@@ -1,6 +1,6 @@
 {
-  "name": "AuraHire - AI Voice Interviewer",
-  "description": "An intelligent voice-based interview platform that analyzes your resume and conducts professional 15-minute audio interviews using Gemini Live, followed by a detailed performance analysis.",
+  "name": "omkar_hire_team - AI Voice Interviewer",
+  "description": "An intelligent voice-based interview platform by omkar_hire_team that analyzes your resume and conducts professional 15-minute audio interviews using Gemini Live, followed by a detailed performance analysis.",
   "requestFramePermissions": [
     "microphone"
   ]

@@ -57,7 +57,7 @@ export default function App() {
             <i className="fa-solid fa-robot"></i>
           </div>
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-            AuraHire
+            omkar_hire_team
           </span>
         </div>
         <div className="hidden md:flex gap-6 text-sm font-medium text-slate-400">
@@ -107,7 +107,7 @@ export default function App() {
       </main>
 
       <footer className="mt-20 border-t border-slate-900 py-12 text-center text-slate-600 text-sm">
-        <p>&copy; 2024 AuraHire AI Systems. Powered by Gemini 2.5 Live API.</p>
+        <p>&copy; 2024 omkar_hire_team AI Systems. Powered by Gemini 2.5 Live API.</p>
       </footer>
     </div>
   );

@@ -22,9 +22,25 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const sessionRef = useRef<any>(null);
   const transcriptBufferRef = useRef<{ user: string; model: string }>({ user: '', model: '' });
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom whenever transcription or thinking state changes
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [transcription, isThinking]);
 
   const stopSession = useCallback(() => {
     if (sessionRef.current) {
+      try {
+        sessionRef.current.close();
+      } catch (e) {
+        console.warn("Session already closed or error closing", e);
+      }
       sessionRef.current = null;
     }
     setIsLive(false);
@@ -32,6 +48,7 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
 
   const startInterview = async () => {
     try {
+      setError(null);
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -50,7 +67,9 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
               const inputData = e.inputBuffer.getChannelData(0);
               const pcmBlob = createAudioBlob(inputData);
               sessionPromise.then((session) => {
-                session.sendRealtimeInput({ media: pcmBlob });
+                if (sessionRef.current) {
+                  session.sendRealtimeInput({ media: pcmBlob });
+                }
               });
             };
 
@@ -94,7 +113,9 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
             }
 
             if (message.serverContent?.interrupted) {
-              sourcesRef.current.forEach(s => s.stop());
+              sourcesRef.current.forEach(s => {
+                try { s.stop(); } catch(e) {}
+              });
               sourcesRef.current.clear();
               nextStartTimeRef.current = 0;
             }
@@ -113,12 +134,11 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
           },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          systemInstruction: `You are an expert technical interviewer. 
+          systemInstruction: `You are an expert technical interviewer for omkar_hire_team. 
           The candidate's resume is: ${resume.text}.
           Conduct a professional interview for 15 minutes. 
           Ask one question at a time. Focus on the candidate's experience and resume details.
-          When the user mentions they are ready, start by introducing yourself and asking the first question.
-          Stay in character as a professional recruiter.`
+          Start by introducing yourself as omkar_hire_team's lead AI recruiter and start with a friendly greeting followed by a deep question about their resume.`
         }
       });
 
@@ -133,7 +153,7 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
     let timer: any;
     if (isLive && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && isLive) {
       stopSession();
       onFinish(transcription);
     }
@@ -147,91 +167,131 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-8 px-4 h-[calc(100vh-120px)] flex flex-col">
-      <div className="flex justify-between items-center mb-6 glass-effect p-4 rounded-xl">
+    <div className="max-w-4xl mx-auto mt-4 px-4 h-[calc(100vh-140px)] flex flex-col">
+      {/* Header Info */}
+      <div className="flex justify-between items-center mb-6 glass-effect p-4 rounded-xl border border-slate-700/50 shadow-lg">
         <div className="flex items-center gap-4">
           <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : 'bg-slate-600'}`}></div>
-          <span className="font-semibold text-lg">{isLive ? 'Interview in Progress' : 'Ready to Start?'}</span>
+          <span className="font-semibold text-lg text-slate-100">{isLive ? 'Live Session' : 'Ready'}</span>
         </div>
         <div className="flex items-center gap-6">
-          <div className="text-xl font-mono text-blue-400">
-            <i className="fa-regular fa-clock mr-2"></i> {formatTime(timeLeft)}
+          <div className="text-xl font-mono text-blue-400 bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20">
+            <i className="fa-solid fa-hourglass-half mr-2 text-sm"></i> {formatTime(timeLeft)}
           </div>
-          <button 
-            onClick={() => { stopSession(); onFinish(transcription); }}
-            className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            End Early
-          </button>
+          {isLive && (
+            <button 
+              onClick={() => { stopSession(); onFinish(transcription); }}
+              className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-4 py-2 rounded-lg text-sm transition-all border border-red-500/30"
+            >
+              Finish Interview
+            </button>
+          )}
         </div>
       </div>
 
       {!isLive ? (
-        <div className="flex-1 flex flex-col items-center justify-center glass-effect rounded-2xl p-12 text-center">
-          <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mb-6 text-4xl shadow-xl shadow-blue-500/20">
-            <i className="fa-solid fa-microphone"></i>
+        <div className="flex-1 flex flex-col items-center justify-center glass-effect rounded-2xl p-12 text-center border border-slate-800 shadow-2xl">
+          <div className="relative mb-8">
+            <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-4xl shadow-2xl shadow-blue-500/30 animate-pulse">
+              <i className="fa-solid fa-microphone-lines"></i>
+            </div>
+            <div className="absolute -inset-4 border border-blue-500/20 rounded-full animate-[ping_3s_linear_infinite]"></div>
           </div>
-          <h2 className="text-3xl font-bold mb-4">Start Your Interview Session</h2>
-          <p className="text-slate-400 max-w-md mb-8">
-            The interview will last for 15 minutes. Ensure you are in a quiet environment and your microphone is working.
+          <h2 className="text-3xl font-bold mb-4 text-white">Start Your Session</h2>
+          <p className="text-slate-400 max-w-md mb-8 leading-relaxed">
+            Prepare to speak clearly. omkar_hire_team AI will ask questions based on your background. 
+            The session will automatically end in 15 minutes.
           </p>
           <button 
             onClick={startInterview}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-full text-xl font-bold transition-all transform hover:scale-105"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-full text-xl font-bold transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/20"
           >
-            Begin Interview
+            Enter Room
           </button>
-          {error && <p className="mt-4 text-red-400">{error}</p>}
+          {error && <p className="mt-6 text-red-400 font-medium flex items-center gap-2">
+            <i className="fa-solid fa-circle-exclamation"></i> {error}
+          </p>}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-hide">
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden relative">
+          {/* Conversation History */}
+          <div 
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto space-y-4 pr-4 custom-scrollbar pb-10"
+          >
             {transcription.length === 0 && !isThinking && (
-              <div className="flex justify-center items-center h-full text-slate-500 italic">
-                Wait for the interviewer to speak or say "I'm ready to start"...
+              <div className="flex flex-col justify-center items-center h-full text-slate-500 space-y-4">
+                <i className="fa-solid fa-comment-dots text-4xl opacity-20"></i>
+                <p className="italic">The interviewer is joining... Say "Hello" to begin.</p>
               </div>
             )}
             {transcription.map((turn, i) => (
-              <div key={i} className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-4 rounded-2xl ${
+              <div key={i} className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                <div className={`max-w-[85%] p-4 rounded-2xl shadow-md border ${
                   turn.role === 'user' 
-                    ? 'bg-blue-600 rounded-tr-none text-white' 
-                    : 'bg-slate-800 rounded-tl-none text-slate-100'
+                    ? 'bg-blue-600 border-blue-500 rounded-tr-none text-white' 
+                    : 'bg-slate-800 border-slate-700 rounded-tl-none text-slate-100'
                 }`}>
-                  <p className="text-sm font-bold opacity-60 mb-1">
-                    {turn.role === 'user' ? 'You' : 'AuraHire AI'}
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-1">
+                    {turn.role === 'user' ? 'Candidate' : 'Interviewer'}
                   </p>
-                  <p>{turn.text}</p>
+                  <p className="text-sm md:text-base leading-relaxed">{turn.text}</p>
                 </div>
               </div>
             ))}
             {isThinking && (
               <div className="flex justify-start">
-                <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none flex gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="bg-slate-800 border border-slate-700 p-4 rounded-2xl rounded-tl-none flex gap-1.5 items-center">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="h-24 glass-effect rounded-2xl flex items-center justify-center p-6 gap-8">
-            <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+          {/* Bottom Visualizer Control */}
+          <div className="mt-auto glass-effect rounded-2xl border border-slate-700/50 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl relative z-10">
+            <div className="flex-1 w-full md:w-auto h-2 bg-slate-800/50 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-blue-500 transition-all duration-300" 
+                className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(59,130,246,0.5)]" 
                 style={{ width: `${(timeLeft / (15 * 60)) * 100}%` }}
               ></div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className={`p-4 rounded-full ${isThinking ? 'bg-slate-800' : 'bg-blue-500 animate-pulse'} text-white`}>
-                <i className="fa-solid fa-waveform"></i>
+            
+            <div className="flex items-center gap-6 bg-slate-900/40 px-6 py-3 rounded-full border border-slate-800">
+              <div className="flex gap-1 h-6 items-end">
+                {[...Array(5)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={`w-1.5 rounded-full bg-blue-500 ${!isThinking ? 'animate-[pulse_1.5s_ease-in-out_infinite]' : 'opacity-30'}`}
+                    style={{ 
+                      height: `${30 + Math.random() * 70}%`,
+                      animationDelay: `${i * 0.1}s`
+                    }}
+                  ></div>
+                ))}
               </div>
-              <p className="text-sm text-slate-400 font-medium">Interviewer is listening...</p>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status</span>
+                <span className="text-sm font-semibold text-blue-400">
+                  {isThinking ? 'AI Typing...' : 'AI Listening...'}
+                </span>
+              </div>
+              <div className={`p-3 rounded-full ${isThinking ? 'bg-slate-700' : 'bg-blue-600 animate-pulse shadow-lg shadow-blue-600/20'} text-white`}>
+                <i className={`fa-solid ${isThinking ? 'fa-ellipsis-h' : 'fa-wave-square'}`}></i>
+              </div>
             </div>
           </div>
         </div>
       )}
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+      `}</style>
     </div>
   );
 };
