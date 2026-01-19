@@ -140,10 +140,15 @@ export default function App() {
         <div className="text-slate-500 text-sm font-medium">
           &copy; 2024 omkar_hire_team Systems. Built with Gemini 2.5 Flash.
         </div>
-        <div className="flex gap-6 text-slate-400">
-          <i className="fa-brands fa-github hover:text-white cursor-pointer transition-colors text-xl"></i>
-          <i className="fa-brands fa-linkedin hover:text-white cursor-pointer transition-colors text-xl"></i>
-          <i className="fa-brands fa-x-twitter hover:text-white cursor-pointer transition-colors text-xl"></i>
+        <div className="flex gap-8 text-slate-400 items-center">
+          <a href="https://github.com/omkarhiwale/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-all transform hover:scale-110">
+            <i className="fa-brands fa-github text-2xl"></i>
+          </a>
+          <a href="https://www.linkedin.com/in/omkarhiwale/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-all transform hover:scale-110">
+            <i className="fa-brands fa-linkedin text-2xl"></i>
+          </a>
+          <div className="h-4 w-px bg-white/10 hidden md:block"></div>
+          <span className="text-xs font-bold uppercase tracking-[0.2em] opacity-40 hidden md:block">Connect With Developer</span>
         </div>
       </footer>
     </div>

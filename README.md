@@ -12,11 +12,6 @@ An intelligent, voice-based interview platform powered by the Gemini 2.5 Live AP
 
 ---
 
-
-## hosted URL :- 
-- **https://omkar-hire-team-ai-voice-interviewer-967131607028.us-west1.run.app/**
-
----
 ## 🛠️ Prerequisites
 
 Before deploying, you need a **Gemini API Key** from Google AI Studio.

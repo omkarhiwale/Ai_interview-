@@ -4,63 +4,59 @@ import { AnalysisResult, InterviewTurn } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-/**
- * Uses Gemini Flash to extract text content from a PDF file.
- */
 export const extractTextFromPDF = async (base64Data: string): Promise<string> => {
-  // Create a fresh instance for the call
-  const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  const response = await genAI.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: [
-      {
-        parts: [
-          {
-            inlineData: {
-              mimeType: "application/pdf",
-              data: base64Data,
-            },
-          },
-          { text: "Extract all professional text content from this resume PDF. Focus on experience, skills, education, and projects. Return only the extracted text content clearly." },
-        ],
-      },
-    ],
-  });
+  try {
+    const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await genAI.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          parts: [
+            { inlineData: { mimeType: "application/pdf", data: base64Data } },
+            { text: "Extract professional context. Focus on skills and history. Return clear text only." },
+          ],
+        },
+      ],
+    });
 
-  return response.text || "";
+    if (!response.text) throw new Error("EMPTY_RESPONSE");
+    return response.text;
+  } catch (err: any) {
+    if (err.message?.includes("429")) throw new Error("RATE_LIMIT");
+    if (err.message?.includes("API_KEY")) throw new Error("AUTH_FAILED");
+    throw new Error("EXTRACTION_FAILED");
+  }
 };
 
 export const analyzeInterview = async (
   resumeText: string,
   transcript: InterviewTurn[]
 ): Promise<AnalysisResult> => {
-  const transcriptText = transcript
-    .map((t) => `${t.role.toUpperCase()}: ${t.text}`)
-    .join("\n");
+  try {
+    const transcriptText = transcript.map((t) => `${t.role.toUpperCase()}: ${t.text}`).join("\n");
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Analyze the following technical interview between a candidate (USER) and an AI (MODEL). 
-    Candidate Resume Context: ${resumeText}
-    Interview Transcript:
-    ${transcriptText}`,
-    config: {
-      systemInstruction: "You are a senior recruiter at a top tech company. Provide a fair, data-driven score and feedback.",
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score: { type: Type.NUMBER, description: "A score from 0-100" },
-          overallFeedback: { type: Type.STRING },
-          strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-          weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
-          recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Candidate Context: ${resumeText}\nTranscript:\n${transcriptText}`,
+      config: {
+        systemInstruction: "Recruitment Analysis Expert. Score 0-100 based on transcript quality and technical alignment.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            score: { type: Type.NUMBER },
+            overallFeedback: { type: Type.STRING },
+            strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+            weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+          required: ["score", "overallFeedback", "strengths", "weaknesses", "recommendations"],
         },
-        required: ["score", "overallFeedback", "strengths", "weaknesses", "recommendations"],
       },
-    },
-  });
+    });
 
-  return JSON.parse(response.text || "{}");
+    return JSON.parse(response.text || "{}");
+  } catch (err: any) {
+    throw new Error("ANALYSIS_CRASH");
+  }
 };

@@ -19,16 +19,9 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
-  const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const sessionRef = useRef<any>(null);
   const transcriptBufferRef = useRef<{ user: string; model: string }>({ user: '', model: '' });
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }
-  }, [transcription, isThinking]);
 
   const stopSession = useCallback(() => {
     if (sessionRef.current) {
@@ -40,8 +33,12 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
 
   const startInterview = async () => {
     try {
+      setError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(err => {
+        throw new Error("MIC_BLOCKED");
+      });
+
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContextRef.current = new AudioContext({ sampleRate: 16000 });
       outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
 
@@ -84,7 +81,7 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
               nextStartTimeRef.current += buffer.duration;
             }
           },
-          onerror: (e) => setError("Link failed. Please re-establish."),
+          onerror: (e) => setError("Audio Stream Jitter: Check Connection."),
           onclose: () => setIsLive(false),
         },
         config: {
@@ -92,16 +89,18 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          systemInstruction: `You are the Lead AI Interviewer for omkar_hire_team.
-          Resume Context: ${resume.text}.
-          Be professional, probing, and insightful. Start with a warm greeting and a challenging question based on their resume projects.`
+          systemInstruction: `You are the omkar_hire_team AI. Professional. Probing. Based on resume: ${resume.text}. Ask one challenging question at a time.`
         }
       });
       sessionRef.current = await sessionPromise;
-    } catch (err) {
-      setError("Audio sync failed. Check mic permissions.");
+    } catch (err: any) {
+      setError(err.message === "MIC_BLOCKED" ? "Microphone access denied." : "Connection timeout.");
     }
   };
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [transcription, isThinking]);
 
   useEffect(() => {
     let timer: any;
@@ -111,67 +110,56 @@ export const InterviewRoom: React.FC<Props> = ({ resume, onFinish }) => {
   }, [isLive, timeLeft, onFinish, transcription, stopSession]);
 
   return (
-    <div className="max-w-5xl mx-auto h-[calc(100vh-180px)] flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-700">
-      <div className="flex justify-between items-center glass-effect p-6 rounded-[2rem] border border-white/10 shadow-2xl">
+    <div className="max-w-4xl mx-auto h-[calc(100vh-160px)] flex flex-col gap-6 animate-in fade-in duration-700">
+      <div className="glass-effect p-4 px-8 rounded-[2rem] flex justify-between items-center border-white/5">
         <div className="flex items-center gap-4">
-          <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-blue-500 animate-ping' : 'bg-slate-700'}`}></div>
-          <span className="font-black text-xl tracking-tight">{isLive ? 'Link Active' : 'Offline'}</span>
+          <div className="relative w-3 h-3">
+             {isLive && <div className="pulse-ring"></div>}
+             <div className={`w-full h-full rounded-full ${isLive ? 'bg-blue-500' : 'bg-slate-700'}`}></div>
+          </div>
+          <span className="text-sm font-black uppercase tracking-[0.2em]">{isLive ? 'Live Interface' : 'Standby'}</span>
         </div>
         <div className="flex items-center gap-8">
-          <div className="text-2xl font-black font-mono text-blue-400 flex items-center gap-3">
-            <i className="fa-solid fa-hourglass-start text-sm"></i> {Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2,'0')}
-          </div>
-          <button onClick={() => { stopSession(); onFinish(transcription); }} className="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-6 py-2 rounded-xl text-xs font-bold transition-all border border-red-500/20 uppercase tracking-widest">Terminate</button>
+           <span className="font-mono text-xl font-black text-blue-400">{Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2,'0')}</span>
+           <button onClick={() => { stopSession(); onFinish(transcription); }} className="text-rose-400 hover:text-white transition-colors text-xs font-black uppercase tracking-widest">End Session</button>
         </div>
       </div>
 
       {!isLive ? (
-        <div className="flex-1 flex flex-col items-center justify-center glass-effect rounded-[3rem] p-16 text-center border border-white/5">
-          <div className="relative mb-12">
-            <div className="w-40 h-40 bg-blue-600 rounded-full flex items-center justify-center text-5xl shadow-[0_0_80px_rgba(37,99,235,0.4)] relative z-10">
-              <i className="fa-solid fa-microphone-lines"></i>
-            </div>
-            <div className="absolute inset-0 bg-blue-400 rounded-full blur-[100px] opacity-20 -z-0"></div>
-            <div className="absolute -inset-8 border-2 border-dashed border-blue-500/20 rounded-full animate-orb-rotate"></div>
+        <div className="flex-1 glass-effect rounded-[3rem] p-12 flex flex-col items-center justify-center text-center border-white/5">
+          <div className="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center mb-8 relative">
+            <i className="fa-solid fa-headset text-4xl text-blue-500"></i>
+            <div className="absolute -inset-4 border border-blue-500/20 rounded-full animate-[spin_10s_linear_infinite]"></div>
           </div>
-          <h2 className="text-5xl font-black mb-6 tracking-tight">Initiate Interview</h2>
-          <p className="text-slate-400 max-w-md mb-12 text-lg font-medium leading-relaxed">Prepare for a high-fidelity 15-minute diagnostic session. omkar_hire_team AI is calibrated to your resume.</p>
-          <button onClick={startInterview} className="bg-white text-slate-950 px-16 py-5 rounded-full text-xl font-black transition-all transform hover:scale-105 active:scale-95 shadow-2xl">Start Audio Link</button>
-          {error && <p className="mt-8 text-red-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2"><i className="fa-solid fa-triangle-exclamation"></i> {error}</p>}
+          <h2 className="text-3xl font-black mb-4">Neural Audio Sync</h2>
+          <p className="text-slate-400 max-w-xs mb-10 text-sm font-medium leading-relaxed">Ensure you're in a quiet room. The AI will listen for your cue after you click below.</p>
+          <button onClick={startInterview} className="btn-primary px-16 py-5 rounded-full text-white font-black text-lg uppercase tracking-wider">Initialize Link</button>
+          {error && <div className="mt-8 text-rose-500 font-bold text-xs uppercase flex items-center gap-2"><i className="fa-solid fa-circle-exclamation"></i> {error}</div>}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col gap-6 overflow-hidden relative">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-6 px-4 custom-scrollbar pb-10">
-            {transcription.map((turn, i) => (
-              <div key={i} className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-                <div className={`max-w-[75%] p-6 rounded-[2rem] shadow-xl ${turn.role === 'user' ? 'bg-blue-600 rounded-tr-none text-white font-medium' : 'glass-effect border-white/10 rounded-tl-none text-slate-100'}`}>
-                   <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2">{turn.role === 'user' ? 'Candidate' : 'omkar_hire_team AI'}</p>
-                   <p className="leading-relaxed">{turn.text}</p>
+        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+           <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-6 px-4 pb-10">
+              {transcription.map((turn, i) => (
+                <div key={i} className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
+                   <div className={`max-w-[80%] p-6 rounded-[2rem] ${turn.role === 'user' ? 'bg-blue-600 rounded-tr-none text-white' : 'glass-effect rounded-tl-none border-white/10'}`}>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2">{turn.role === 'user' ? 'Candidate' : 'AI Recruiter'}</p>
+                      <p className="text-sm md:text-base leading-relaxed">{turn.text}</p>
+                   </div>
+                </div>
+              ))}
+           </div>
+           
+           <div className="glass-effect p-8 rounded-[2.5rem] flex items-center gap-8 relative overflow-hidden">
+              <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center shrink-0 border border-white/10 relative z-10">
+                <i className={`fa-solid ${isThinking ? 'fa-atom animate-spin-slow' : 'fa-wave-square animate-pulse'} text-blue-500`}></i>
+              </div>
+              <div className="flex-1 relative z-10">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1">{isThinking ? 'Processing Engine' : 'Audio Feed'}</p>
+                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                   <div className={`h-full bg-blue-500 transition-all duration-300 ${isThinking ? 'w-2/3 animate-pulse' : 'w-1/4'}`}></div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          <div className="glass-effect rounded-[2.5rem] border border-white/10 p-8 flex flex-col md:flex-row items-center justify-between gap-10 shadow-inner">
-             <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
-                <div className={`absolute inset-0 rounded-full border-2 border-blue-500/30 ${!isThinking && 'animate-orb-rotate'}`}></div>
-                <div className={`absolute inset-2 rounded-full border border-indigo-400/20 ${!isThinking && 'animate-orb-rotate'} [animation-direction:reverse]`}></div>
-                <div className={`w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] ${isThinking ? 'animate-pulse' : 'animate-bounce'}`}>
-                   <i className={`fa-solid ${isThinking ? 'fa-brain' : 'fa-wave-square'} text-white text-lg`}></i>
-                </div>
-             </div>
-             
-             <div className="flex-1 w-full text-center md:text-left">
-                <h4 className="text-xl font-black mb-1">{isThinking ? 'AI Reasoning' : 'Listening Context'}</h4>
-                <p className="text-slate-400 text-sm font-medium">{isThinking ? 'Processing semantic structures...' : 'Ready for your input. Talk naturally.'}</p>
-             </div>
-
-             <div className="flex gap-1 h-12 items-end px-6">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className={`w-1.5 rounded-full bg-blue-500/80 ${!isThinking ? 'animate-pulse' : 'opacity-20'}`} style={{ height: `${20 + Math.random()*80}%`, animationDelay: `${i*0.1}s` }}></div>
-                ))}
-             </div>
-          </div>
+           </div>
         </div>
       )}
     </div>
