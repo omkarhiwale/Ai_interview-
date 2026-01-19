@@ -13,8 +13,8 @@ An intelligent, voice-based interview platform powered by the Gemini 2.5 Live AP
 ---
 
 
-## test hosted URL :- 
--    **https://omkar-hire-team-ai-voice-interviewer-967131607028.us-west1.run.app/
+## hosted URL :- 
+- **https://omkar-hire-team-ai-voice-interviewer-967131607028.us-west1.run.app/**
 
 ---
 ## 🛠️ Prerequisites
