@@ -28,54 +28,45 @@ export const ResumeUploader: React.FC<Props> = ({ onUpload }) => {
       if (isPDF) {
         const base64 = await blobToBase64(file);
         const extractedText = await extractTextFromPDF(base64);
-        if (!extractedText) throw new Error("Could not extract text from PDF.");
+        if (!extractedText) throw new Error("Extraction failed");
         onUpload({ text: extractedText, fileName: file.name });
       } else {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          const text = e.target?.result as string;
-          onUpload({ text, fileName: file.name });
-        };
+        reader.onload = (e) => onUpload({ text: e.target?.result as string, fileName: file.name });
         reader.readAsText(file);
       }
     } catch (err) {
-      console.error(err);
-      setError('Failed to process file. Please try a different document or a text file.');
+      setError('Neural processing failed. Please try a cleaner PDF or a Text file.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
-  };
-
   if (isProcessing) {
     return (
-      <div className="max-w-xl mx-auto p-12 rounded-2xl glass-effect mt-12 flex flex-col items-center justify-center text-center">
-        <div className="relative mb-8">
-          <div className="w-20 h-20 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+      <div className="max-w-xl mx-auto p-16 rounded-[2rem] glass-effect text-center relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-blue-500/20">
+          <div className="h-full bg-blue-500 animate-[shimmer_2s_infinite] w-1/3"></div>
+        </div>
+        <div className="relative mb-10 inline-block">
+          <div className="w-24 h-24 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <i className="fa-solid fa-file-pdf text-blue-400 text-xl animate-pulse"></i>
+            <i className="fa-solid fa-file-pdf text-blue-400 text-2xl animate-pulse"></i>
           </div>
         </div>
-        <h2 className="text-2xl font-bold mb-2">Analyzing Document</h2>
-        <p className="text-slate-400">Our AI is extracting professional details from your resume...</p>
+        <h2 className="text-3xl font-black mb-3">Reading Profile</h2>
+        <p className="text-slate-400 font-medium">Extracting nodes from your professional history...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-xl mx-auto p-8 rounded-2xl glass-effect mt-12">
-      <h2 className="text-3xl font-bold mb-4 text-center text-blue-400">Step 1: Upload Resume</h2>
-      <p className="text-slate-400 text-center mb-8">
-        Upload your resume (.pdf or .txt) to let our AI personalize your interview experience.
-      </p>
-
+    <div className="max-w-2xl mx-auto p-12 rounded-[2.5rem] glass-effect border-2 border-white/5 relative group">
+      <div className="absolute -top-12 -left-12 w-24 h-24 bg-blue-500/10 blur-3xl rounded-full"></div>
+      
       <div
-        className={`border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center transition-all ${
-          isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700 hover:border-blue-400'
+        className={`relative z-10 border-2 border-dashed rounded-[2rem] p-16 flex flex-col items-center justify-center transition-all duration-500 ${
+          isDragging ? 'border-blue-500 bg-blue-500/5 scale-[0.98]' : 'border-slate-800 hover:border-blue-400/50'
         }`}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
@@ -86,46 +77,31 @@ export const ResumeUploader: React.FC<Props> = ({ onUpload }) => {
           if (file) handleFile(file);
         }}
       >
-        <div className="flex gap-4 mb-4">
-          <div className="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center">
-            <i className="fa-solid fa-file-pdf text-2xl text-red-400"></i>
+        <div className="flex gap-4 mb-8">
+          <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center border border-white/5 shadow-xl shadow-black/50 group-hover:scale-110 transition-transform">
+            <i className="fa-solid fa-file-pdf text-3xl text-red-400"></i>
           </div>
-          <div className="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center">
-            <i className="fa-solid fa-file-lines text-2xl text-blue-400"></i>
+          <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center border border-white/5 shadow-xl shadow-black/50 group-hover:scale-110 transition-transform delay-75">
+            <i className="fa-solid fa-file-lines text-3xl text-blue-400"></i>
           </div>
         </div>
-        <p className="text-lg font-medium mb-2">Drag and drop your resume</p>
-        <p className="text-sm text-slate-500 mb-6">Supported formats: .pdf, .txt</p>
+
+        <h3 className="text-2xl font-black mb-2">Initialize Session</h3>
+        <p className="text-slate-400 text-center mb-10 max-w-xs font-medium">
+          Drag your professional summary here to begin your AI interview.
+        </p>
         
-        <label className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg cursor-pointer transition-colors font-semibold">
-          Browse Files
-          <input type="file" className="hidden" accept=".pdf,.txt" onChange={handleInputChange} />
+        <label className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-full cursor-pointer transition-all font-bold text-lg shadow-xl shadow-blue-600/20 active:scale-95">
+          Choose Document
+          <input type="file" className="hidden" accept=".pdf,.txt" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
         </label>
       </div>
 
       {error && (
-        <div className="mt-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
-          <i className="fa-solid fa-circle-exclamation mr-2"></i> {error}
+        <div className="mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm font-semibold flex items-center gap-3 animate-in slide-in-from-bottom-2">
+          <i className="fa-solid fa-circle-exclamation text-lg"></i> {error}
         </div>
       )}
-
-      <div className="mt-8 pt-8 border-t border-slate-800">
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Why upload your resume?</h3>
-        <ul className="space-y-3 text-sm text-slate-300">
-          <li className="flex items-start">
-            <i className="fa-solid fa-check text-green-500 mt-1 mr-3"></i>
-            <span>Tailored questions based on your specific experience.</span>
-          </li>
-          <li className="flex items-start">
-            <i className="fa-solid fa-check text-green-500 mt-1 mr-3"></i>
-            <span>Relevant deep-dives into your project history.</span>
-          </li>
-          <li className="flex items-start">
-            <i className="fa-solid fa-check text-green-500 mt-1 mr-3"></i>
-            <span>More accurate performance assessment.</span>
-          </li>
-        </ul>
-      </div>
     </div>
   );
 };

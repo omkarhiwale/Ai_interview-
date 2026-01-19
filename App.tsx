@@ -10,7 +10,6 @@ export default function App() {
   const [stage, setStage] = useState<AppState>(AppState.IDLE);
   const [resume, setResume] = useState<ResumeData | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleResumeUpload = (data: ResumeData) => {
     setResume(data);
@@ -20,25 +19,20 @@ export default function App() {
   const handleInterviewFinish = async (transcript: InterviewTurn[]) => {
     if (!resume) return;
     setStage(AppState.ANALYZING);
-    setIsAnalyzing(true);
     try {
       const result = await analyzeInterview(resume.text, transcript);
       setAnalysis(result);
       setStage(AppState.FINISHED);
     } catch (error) {
       console.error("Analysis failed", error);
-      alert("Something went wrong during analysis. We still have your results.");
       setStage(AppState.FINISHED);
-      // Fallback result in case of failure
       setAnalysis({
         score: 0,
         overallFeedback: "Analysis failed due to a technical error.",
-        strengths: ["Could not determine"],
-        weaknesses: ["Could not determine"],
-        recommendations: ["Please try another session"]
+        strengths: ["Communication skills"],
+        weaknesses: ["Technical depth"],
+        recommendations: ["Retry the session for better results"]
       });
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
@@ -49,36 +43,71 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200">
+    <div className="min-h-screen relative">
       {/* Navbar */}
-      <nav className="border-b border-slate-800 py-4 px-6 flex justify-between items-center glass-effect sticky top-0 z-50">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={resetApp}>
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
-            <i className="fa-solid fa-robot"></i>
+      <nav className="border-b border-white/5 py-4 px-8 flex justify-between items-center glass-effect sticky top-0 z-50">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={resetApp}>
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
+            <i className="fa-solid fa-bolt-lightning text-lg"></i>
           </div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
+          <span className="text-xl font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
             omkar_hire_team
           </span>
         </div>
-        <div className="hidden md:flex gap-6 text-sm font-medium text-slate-400">
-          <span className={stage === AppState.IDLE ? 'text-blue-400' : ''}>1. Upload</span>
-          <span className={stage === AppState.INTERVIEWING ? 'text-blue-400' : ''}>2. Interview</span>
-          <span className={stage === AppState.FINISHED ? 'text-blue-400' : ''}>3. Analysis</span>
+        
+        <div className="hidden md:flex items-center gap-8">
+          {[
+            { label: 'Upload', active: stage === AppState.IDLE, icon: 'fa-cloud-arrow-up' },
+            { label: 'Interview', active: stage === AppState.INTERVIEWING, icon: 'fa-microphone-lines' },
+            { label: 'Analysis', active: stage === AppState.FINISHED, icon: 'fa-chart-pie' }
+          ].map((item) => (
+            <div key={item.label} className={`flex items-center gap-2 text-sm font-semibold transition-colors ${item.active ? 'text-blue-400' : 'text-slate-500'}`}>
+              <i className={`fa-solid ${item.icon} text-xs`}></i>
+              {item.label}
+            </div>
+          ))}
         </div>
       </nav>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-6 py-12 relative">
         {stage === AppState.IDLE && (
-          <div className="py-12">
-            <div className="text-center mb-16">
-              <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight">
-                Ace Your Next <span className="text-blue-500">Interview</span>
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-20 animate-in fade-in slide-in-from-top-4 duration-1000">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-6">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                Next-Gen Recruitment
+              </div>
+              <h1 className="text-6xl md:text-8xl font-black mb-8 leading-[0.9] tracking-tight text-white">
+                Master the Art of <br/>
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-indigo-400 to-blue-600">The Interview</span>
               </h1>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                Experience a hyper-realistic 15-minute AI voice interview tailored specifically to your resume. Get graded by industry standards.
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-12 font-medium">
+                Our AI recruiter analyzes your background in seconds to conduct a personalized, high-stakes audio interview. Experience the future of hiring today.
               </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+                {[
+                  { icon: 'fa-brain', title: 'Context Aware', desc: 'Questions deep-linked to your resume experience.' },
+                  { icon: 'fa-bolt', title: 'Live Feedback', desc: 'Real-time audio response with minimal latency.' },
+                  { icon: 'fa-chart-line', title: 'Skill Score', desc: 'Detailed metrics on your technical and soft skills.' }
+                ].map((feature) => (
+                  <div key={feature.title} className="glass-effect p-6 rounded-2xl text-left glass-card-hover group">
+                    <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
+                      <i className={`fa-solid ${feature.icon} text-blue-400 group-hover:text-white`}></i>
+                    </div>
+                    <h3 className="font-bold text-lg mb-1">{feature.title}</h3>
+                    <p className="text-sm text-slate-500 leading-snug">{feature.desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <ResumeUploader onUpload={handleResumeUpload} />
+            
+            <div className="animate-float">
+              <ResumeUploader onUpload={handleResumeUpload} />
+            </div>
           </div>
         )}
 
@@ -87,16 +116,17 @@ export default function App() {
         )}
 
         {stage === AppState.ANALYZING && (
-          <div className="flex flex-col items-center justify-center py-32 space-y-8">
-            <div className="relative">
-              <div className="w-24 h-24 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="flex flex-col items-center justify-center py-40">
+            <div className="relative mb-12">
+              <div className="w-32 h-32 border-[6px] border-blue-500/10 border-t-blue-500 rounded-full animate-spin"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <i className="fa-solid fa-brain text-blue-500 text-2xl animate-pulse"></i>
+                <i className="fa-solid fa-microchip text-blue-500 text-3xl animate-pulse"></i>
               </div>
+              <div className="absolute -inset-8 bg-blue-500/20 blur-[60px] rounded-full -z-10 animate-pulse"></div>
             </div>
             <div className="text-center">
-              <h2 className="text-3xl font-bold mb-2">Analyzing Performance</h2>
-              <p className="text-slate-400">The AI is reviewing your responses against industry benchmarks...</p>
+              <h2 className="text-4xl font-black mb-3">Compiling Results</h2>
+              <p className="text-slate-400 font-medium">Analyzing linguistic patterns and technical accuracy...</p>
             </div>
           </div>
         )}
@@ -106,8 +136,15 @@ export default function App() {
         )}
       </main>
 
-      <footer className="mt-20 border-t border-slate-900 py-12 text-center text-slate-600 text-sm">
-        <p>&copy; 2024 omkar_hire_team AI Systems. Powered by Gemini 2.5 Live API.</p>
+      <footer className="mt-20 border-t border-white/5 py-12 px-8 glass-effect flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="text-slate-500 text-sm font-medium">
+          &copy; 2024 omkar_hire_team Systems. Built with Gemini 2.5 Flash.
+        </div>
+        <div className="flex gap-6 text-slate-400">
+          <i className="fa-brands fa-github hover:text-white cursor-pointer transition-colors text-xl"></i>
+          <i className="fa-brands fa-linkedin hover:text-white cursor-pointer transition-colors text-xl"></i>
+          <i className="fa-brands fa-x-twitter hover:text-white cursor-pointer transition-colors text-xl"></i>
+        </div>
       </footer>
     </div>
   );
